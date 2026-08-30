@@ -1,7 +1,12 @@
 .PHONY: help install lint format test repro dag metrics push pull mlflow api clean \
         docker-pipeline docker-build docker-run
 
-POETRY := poetry run
+# `poetry run` resolve o executavel correto em qualquer plataforma
+# (.venv/bin no Linux/macOS, .venv/Scripts no Windows) e funciona com o
+# ambiente ativado ou nao. Custa ~2s de inicializacao por chamada, entao
+# `?=` permite pular esse custo quando o venv ja esta ativo:
+#     make test POETRY=
+POETRY ?= poetry run
 
 help:           ## Lista os alvos disponíveis
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -54,10 +59,18 @@ docker-pipeline: ## Constrói e EXECUTA o pipeline completo em container
 	docker build -t purchase-intent-pipeline .
 	docker run --rm purchase-intent-pipeline
 
-docker-build:   ## Constrói a imagem de serving (API)
+# Regra de ARQUIVO, não de alvo: o Make só executa se models/model.joblib
+# não existir. Em um clone limpo isso treina o modelo usando o próprio
+# container do pipeline (com DVC e MLflow de verdade) e o deixa no host,
+# de onde a imagem de serving vai copiá-lo.
+models/model.joblib:
+	docker build -t purchase-intent-pipeline .
+	docker run --rm -v "$(CURDIR)/models:/app/models" purchase-intent-pipeline
+
+docker-build: models/model.joblib  ## Constrói a imagem de serving (treina antes, se preciso)
 	docker build --target serving -t purchase-intent .
 
-docker-run:     ## Sobe a API containerizada na porta 8000
+docker-run: docker-build  ## Treina (se preciso), constrói e sobe a API na porta 8000
 	docker run --rm -p 8000:8000 purchase-intent
 
 # ── Limpeza ──────────────────────────────────────────────────────────────────

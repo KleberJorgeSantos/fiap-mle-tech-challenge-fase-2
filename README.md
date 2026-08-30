@@ -344,11 +344,34 @@ docker run --rm -v "${PWD}/reports:/app/reports" -v "${PWD}/models:/app/models" 
 ### Alvo `serving` — sobe a API
 
 ```bash
-make docker-build
 make docker-run
 curl http://localhost:8000/health
 # {"status":"ok","model_loaded":true,"model_source":"local-joblib"}
 ```
+
+Um comando só, mesmo em um clone recém-baixado. O `Makefile` encadeia as dependências:
+
+```
+models/model.joblib   ──►  docker-build  ──►  docker-run
+   (regra de arquivo)        (imagem)          (container)
+```
+
+Se `models/model.joblib` não existir, o Make **treina o modelo antes** — rodando o container
+do pipeline com o diretório montado, para o artefato ficar no host:
+
+```makefile
+models/model.joblib:
+	docker build -t purchase-intent-pipeline .
+	docker run --rm -v "$(CURDIR)/models:/app/models" purchase-intent-pipeline
+```
+
+É uma regra de **arquivo**, não de alvo: o Make a executa apenas quando o arquivo falta. Com o
+modelo já treinado, `make docker-run` pula direto para o build da imagem.
+
+> Por que treinar em um container em vez de embutir o treino no `Dockerfile` do serving? Para
+> o modelo servido continuar tendo **linhagem**. Ele é produzido pelo pipeline de verdade, com
+> DVC e MLflow, e não numa camada de imagem descartável — onde não haveria `run_id` nem versão
+> no Registry para rastrear de volta.
 
 Instala apenas o grupo de produção (`poetry install --only main`) — sem pytest, ruff, DVC ou
 matplotlib. Roda como usuário **não-root** e expõe um `HEALTHCHECK`.

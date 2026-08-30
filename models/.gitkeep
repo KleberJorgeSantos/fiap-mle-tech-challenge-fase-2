@@ -1,0 +1,6 @@
+Este arquivo existe para que o diretório models/ chegue em um clone novo.
+
+O artefato models/model.joblib é gerado pelo pipeline (`dvc repro`) e não é
+versionado no git — mas o Dockerfile do alvo `serving` faz `COPY models/`,
+que falha se o diretório não existir. Sem este .gitkeep, `make docker-build`
+quebra em um clone limpo com: failed to compute cache key: "/models": not found
