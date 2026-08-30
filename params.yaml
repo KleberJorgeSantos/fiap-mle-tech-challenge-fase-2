@@ -1,0 +1,56 @@
+# ============================================================
+# params.yaml — parâmetros do pipeline, lidos pelo DVC
+# Alterar qualquer valor aqui invalida o cache dos estágios
+# que dependem dele e força o `dvc repro` a re-executá-los.
+# ============================================================
+
+# Semente única para todo o pipeline (reprodutibilidade).
+seed: 42
+
+data:
+  url: https://archive.ics.uci.edu/static/public/468/online+shoppers+purchasing+intention+dataset.zip
+  csv_name: online_shoppers_intention.csv
+
+split:
+  test_size: 0.2
+  stratify: true
+
+train:
+  # Modelos treinados e comparados nesta execução.
+  models:
+    - dummy
+    - logistic_regression
+    - random_forest
+    - gradient_boosting
+  # Métrica usada para eleger o campeão. PR-AUC, não accuracy:
+  # a base tem 15,5% de positivos, então prever "ninguém compra"
+  # já acerta 84,5% sem nenhum valor de negócio.
+  selection_metric: pr_auc
+  cv_folds: 5
+  hyperparams:
+    dummy:
+      strategy: prior
+    logistic_regression:
+      C: 1.0
+      max_iter: 1000
+      class_weight: balanced
+    random_forest:
+      n_estimators: 300
+      max_depth: 12
+      min_samples_leaf: 5
+      class_weight: balanced
+      n_jobs: -1
+    gradient_boosting:
+      n_estimators: 200
+      learning_rate: 0.1
+      max_depth: 3
+      subsample: 0.9
+
+evaluate:
+  # Limiar de decisão para converter probabilidade em classe.
+  threshold: 0.5
+  # Custo de negócio assimétrico, em reais.
+  # FP: cupom/retargeting gasto em quem não ia comprar.
+  # FN: sessão que ia converter e não recebeu ação → venda perdida.
+  cost_false_positive: 5.0
+  cost_false_negative: 50.0

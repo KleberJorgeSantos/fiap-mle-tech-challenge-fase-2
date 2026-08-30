@@ -1,0 +1,6 @@
+# Padrões ignorados pelo DVC ao calcular hashes de diretórios.
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/

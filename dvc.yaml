@@ -1,0 +1,85 @@
+# ============================================================
+# Pipeline reprodutível — `dvc repro` executa tudo em ordem.
+# Cada estágio declara deps/params/outs; o DVC só re-executa
+# aquilo cujo hash de entrada mudou.
+# ============================================================
+
+stages:
+
+  download:
+    desc: Baixa o dataset Online Shoppers Purchasing Intention da UCI.
+    cmd: python -m src.pipelines.download
+    deps:
+      - src/pipelines/download.py
+      - src/data/download.py
+    params:
+      - data.url
+      - data.csv_name
+    outs:
+      - data/raw/online_shoppers_intention.csv
+
+  preprocess:
+    desc: Valida o schema, tipa as colunas de código e divide treino/teste.
+    cmd: python -m src.pipelines.preprocess
+    deps:
+      - src/pipelines/preprocess.py
+      - src/data/loader.py
+      - src/data/preprocessing.py
+      - src/config.py
+      - data/raw/online_shoppers_intention.csv
+    params:
+      - seed
+      - split
+    outs:
+      - data/processed/train.parquet
+      - data/processed/test.parquet
+
+  train:
+    desc: Treina os candidatos, rastreia no MLflow e salva o campeão.
+    cmd: python -m src.pipelines.train
+    deps:
+      - src/pipelines/train.py
+      - src/models/factory.py
+      - src/models/train.py
+      - src/tracking/mlflow_utils.py
+      - src/evaluation/metrics.py
+      - data/processed/train.parquet
+      - data/processed/test.parquet
+    params:
+      - seed
+      - train
+    outs:
+      - models/model.joblib
+      # best_run.json é um artefato interno de handoff entre estágios → cache.
+      - reports/best_run.json
+      # comparison.csv é pequeno e legível: vai para o git, não para o cache.
+      - reports/comparison.csv:
+          cache: false
+
+  evaluate:
+    desc: Mede o campeão no conjunto de teste e gera as curvas ROC/PR.
+    cmd: python -m src.pipelines.evaluate
+    deps:
+      - src/pipelines/evaluate.py
+      - src/evaluation/metrics.py
+      - models/model.joblib
+      - data/processed/test.parquet
+    params:
+      - evaluate
+    metrics:
+      - reports/metrics.json:
+          cache: false
+    plots:
+      - reports/figures:
+          cache: false
+
+  register:
+    desc: Promove o run vencedor no MLflow Model Registry com o alias @champion.
+    cmd: python -m src.pipelines.register
+    deps:
+      - src/pipelines/register.py
+      - src/tracking/registry.py
+      - reports/best_run.json
+    outs:
+      - reports/registered_model.json:
+          cache: false

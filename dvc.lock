@@ -1,0 +1,189 @@
+schema: '2.0'
+stages:
+  download:
+    cmd: python -m src.pipelines.download
+    deps:
+    - path: src/data/download.py
+      hash: md5
+      md5: d80304102fdabb6450370c4595c8f6b0
+      size: 1520
+    - path: src/pipelines/download.py
+      hash: md5
+      md5: 2a29e49f35cd1406b94ccf7440619926
+      size: 724
+    params:
+      params.yaml:
+        data.csv_name: online_shoppers_intention.csv
+        data.url: 
+          https://archive.ics.uci.edu/static/public/468/online+shoppers+purchasing+intention+dataset.zip
+    outs:
+    - path: data/raw/online_shoppers_intention.csv
+      hash: md5
+      md5: cc6ec1db03b4f10f8de52c56ff48b085
+      size: 1072063
+  preprocess:
+    cmd: python -m src.pipelines.preprocess
+    deps:
+    - path: data/raw/online_shoppers_intention.csv
+      hash: md5
+      md5: cc6ec1db03b4f10f8de52c56ff48b085
+      size: 1072063
+    - path: src/config.py
+      hash: md5
+      md5: ff1ec6fb5179ca4269258a5787a8aecf
+      size: 4206
+    - path: src/data/loader.py
+      hash: md5
+      md5: fd2eb359aa5ca72f37cc3bff6d8209f1
+      size: 3421
+    - path: src/data/preprocessing.py
+      hash: md5
+      md5: 0e60886061f83ab33b3ceee84ddef46e
+      size: 3264
+    - path: src/pipelines/preprocess.py
+      hash: md5
+      md5: 4034f6b71daccd96213ab5031eeff32c
+      size: 1830
+    params:
+      params.yaml:
+        seed: 42
+        split:
+          test_size: 0.2
+          stratify: true
+    outs:
+    - path: data/processed/test.parquet
+      hash: md5
+      md5: 572bcc86c511ee7f88b13560920f2e28
+      size: 79655
+    - path: data/processed/train.parquet
+      hash: md5
+      md5: 41a01d74b80f803bc4c7eda42eadedcc
+      size: 265511
+  train:
+    cmd: python -m src.pipelines.train
+    deps:
+    - path: data/processed/test.parquet
+      hash: md5
+      md5: 572bcc86c511ee7f88b13560920f2e28
+      size: 79655
+    - path: data/processed/train.parquet
+      hash: md5
+      md5: 41a01d74b80f803bc4c7eda42eadedcc
+      size: 265511
+    - path: src/evaluation/metrics.py
+      hash: md5
+      md5: b5e5c19056bb39a00116efb1ac0201da
+      size: 3206
+    - path: src/models/factory.py
+      hash: md5
+      md5: cbdeeb114670891edb4836ba42dd456f
+      size: 2521
+    - path: src/models/train.py
+      hash: md5
+      md5: 0646cd57c9e1f7933ad9a6b5467bd4fe
+      size: 4112
+    - path: src/pipelines/train.py
+      hash: md5
+      md5: 6cbbfcb5a462a99dd667674c10cb3f5e
+      size: 5119
+    - path: src/tracking/mlflow_utils.py
+      hash: md5
+      md5: 710093c260b44fde241cf1b559bfbe33
+      size: 2251
+    params:
+      params.yaml:
+        seed: 42
+        train:
+          models:
+          - dummy
+          - logistic_regression
+          - random_forest
+          - gradient_boosting
+          selection_metric: pr_auc
+          cv_folds: 5
+          hyperparams:
+            dummy:
+              strategy: prior
+            logistic_regression:
+              C: 1.0
+              max_iter: 1000
+              class_weight: balanced
+            random_forest:
+              n_estimators: 300
+              max_depth: 12
+              min_samples_leaf: 5
+              class_weight: balanced
+              n_jobs: -1
+            gradient_boosting:
+              n_estimators: 200
+              learning_rate: 0.1
+              max_depth: 3
+              subsample: 0.9
+    outs:
+    - path: models/model.joblib
+      hash: md5
+      md5: 1523deb94e664f01d41a7752eb606743
+      size: 276653
+    - path: reports/best_run.json
+      hash: md5
+      md5: 099f659e496e03cfaf75e5fa238fa0d5
+      size: 160
+    - path: reports/comparison.csv
+      hash: md5
+      md5: 2ba3616847d9eafe513cbaf5bb1049cc
+      size: 595
+  evaluate:
+    cmd: python -m src.pipelines.evaluate
+    deps:
+    - path: data/processed/test.parquet
+      hash: md5
+      md5: 572bcc86c511ee7f88b13560920f2e28
+      size: 79655
+    - path: models/model.joblib
+      hash: md5
+      md5: 1523deb94e664f01d41a7752eb606743
+      size: 276653
+    - path: src/evaluation/metrics.py
+      hash: md5
+      md5: b5e5c19056bb39a00116efb1ac0201da
+      size: 3206
+    - path: src/pipelines/evaluate.py
+      hash: md5
+      md5: dc067bdb7bc80bab3dfdd4c979a31b8e
+      size: 3285
+    params:
+      params.yaml:
+        evaluate:
+          threshold: 0.5
+          cost_false_positive: 5.0
+          cost_false_negative: 50.0
+    outs:
+    - path: reports/figures
+      hash: md5
+      md5: b4f2e6a72295086bde1cce65e6c312f4.dir
+      size: 64130
+      nfiles: 2
+    - path: reports/metrics.json
+      hash: md5
+      md5: 0169b59a1816cd83b436e6c91da0c72a
+      size: 288
+  register:
+    cmd: python -m src.pipelines.register
+    deps:
+    - path: reports/best_run.json
+      hash: md5
+      md5: 099f659e496e03cfaf75e5fa238fa0d5
+      size: 160
+    - path: src/pipelines/register.py
+      hash: md5
+      md5: c70613ff96f909ac64f97bb2d4f3b4e4
+      size: 1075
+    - path: src/tracking/registry.py
+      hash: md5
+      md5: 16ed6b508da4005f607550159866e296
+      size: 3226
+    outs:
+    - path: reports/registered_model.json
+      hash: md5
+      md5: 287566839520b8fbe773ae1be8b15660
+      size: 270
