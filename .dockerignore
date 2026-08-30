@@ -1,0 +1,47 @@
+# ── Controle de versão ───────────────────────────────────────
+.git/
+.gitignore
+.dvc/
+.dvcignore
+dvc-storage/
+
+# ── Artefatos Python ─────────────────────────────────────────
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+
+# ── Desenvolvimento e testes ─────────────────────────────────
+tests/
+notebooks/
+*.ipynb
+.ipynb_checkpoints/
+
+# ── Rastreamento de experimentos (não vai para a imagem) ─────
+mlruns/
+mlartifacts/
+mlflow.db
+
+# ── Dados brutos e processados ───────────────────────────────
+data/
+reports/
+
+# ── Segredos ─────────────────────────────────────────────────
+.env
+.env.*
+.claude/
+CLAUDE.md
+
+# ── Documentação ─────────────────────────────────────────────
+# README.md NÃO entra aqui: o pyproject.toml o declara em `readme`,
+# então o `poetry install` do Dockerfile falha sem ele.
+*.pdf
+docs/

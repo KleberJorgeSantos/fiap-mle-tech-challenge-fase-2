@@ -1,0 +1,20 @@
+# ============================================================
+# Normalização de fim de linha
+# ============================================================
+# Sem isto, quem trabalha no Windows commita CRLF e quem está no
+# Linux/macOS vê o arquivo inteiro como alterado — diffs ilegíveis
+# em um trabalho de grupo. Com `text=auto eol=lf`, o repositório
+# guarda sempre LF e cada checkout usa a convenção local.
+
+* text=auto eol=lf
+
+# Binários: nunca normalizar.
+*.png   binary
+*.jpg   binary
+*.pdf   binary
+*.joblib binary
+*.parquet binary
+*.db    binary
+
+# Notebooks: JSON, tratar como texto para o diff funcionar.
+*.ipynb text eol=lf
