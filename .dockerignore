@@ -1,9 +1,13 @@
 # ── Controle de versão ───────────────────────────────────────
 .git/
 .gitignore
-.dvc/
-.dvcignore
 dvc-storage/
+
+# O .dvc/ ENTRA na imagem do pipeline (o `dvc repro` precisa dele), mas
+# o cache e os temporários ficam de fora — são gigantes e reconstruíveis.
+.dvc/cache/
+.dvc/tmp/
+.dvc/config.local
 
 # ── Artefatos Python ─────────────────────────────────────────
 .venv/

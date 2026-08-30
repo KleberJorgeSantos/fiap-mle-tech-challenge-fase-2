@@ -159,7 +159,8 @@ make metrics       # dvc metrics show
 make push / pull   # sincroniza com o remote do DVC
 make mlflow        # UI do MLflow em :5000
 make api           # API local em :8000
-make docker-build  # constroi a imagem
+make docker-pipeline # executa o pipeline inteiro em container
+make docker-build  # constroi a imagem de serving
 make docker-run    # sobe a API containerizada
 ```
 </details>
@@ -309,8 +310,38 @@ curl -X POST http://localhost:8000/predict \
 
 ## 🐳 Docker
 
-Build **multi-stage**: o Poetry e o cache de wheels ficam no estágio de build e nunca chegam
-à imagem final, que roda como usuário **não-root** e expõe um `HEALTHCHECK`.
+Um `Dockerfile` **multi-stage** com dois alvos, porque treinar e servir têm necessidades
+opostas: o pipeline precisa de DVC, matplotlib e acesso à rede; a API precisa ser pequena.
+
+### Alvo `pipeline` (padrão) — executa o projeto
+
+```bash
+make docker-pipeline
+```
+
+Equivale a:
+
+```bash
+docker build -t purchase-intent-pipeline .
+docker run --rm purchase-intent-pipeline
+```
+
+O container roda `dvc repro` e executa os **cinco estágios de ponta a ponta**, sem nenhuma
+dependência instalada na máquina host: baixa o dataset da UCI, pré-processa, treina os quatro
+candidatos, avalia e promove o campeão no Model Registry.
+
+Para trazer os artefatos para fora, monte os diretórios de saída:
+
+```bash
+docker run --rm -v "${PWD}/reports:/app/reports" -v "${PWD}/models:/app/models" \
+  purchase-intent-pipeline
+```
+
+> **Detalhe de implementação:** o DVC exige um repositório git para operar, e a imagem não
+> carrega o `.git`. O build resolve com `dvc config --local core.no_scm true` — e como
+> `.dvc/config.local` é gitignorado, isso vale só dentro do container.
+
+### Alvo `serving` — sobe a API
 
 ```bash
 make docker-build
@@ -319,16 +350,38 @@ curl http://localhost:8000/health
 # {"status":"ok","model_loaded":true,"model_source":"local-joblib"}
 ```
 
-Esta é uma imagem de **serving**, não de treino: instala apenas o grupo de produção
-(`poetry install --only main`), sem pytest, ruff, DVC ou matplotlib. O pipeline roda no
-ambiente de desenvolvimento, com `poetry run dvc repro`.
+Instala apenas o grupo de produção (`poetry install --only main`) — sem pytest, ruff, DVC ou
+matplotlib. Roda como usuário **não-root** e expõe um `HEALTHCHECK`.
 
-Duas decisões que enxugaram a imagem de 1,97 GB para **1,49 GB**:
+Repare no `model_source`: aqui é `local-joblib`, enquanto a API local reporta
+`mlflow-registry`. A imagem de serving não carrega o `mlflow.db`, então a API tenta o Registry,
+não encontra o backend e degrada para o artefato copiado no build — em vez de morrer.
+
+Imagens resultantes: **serving 839 MB**, **pipeline 1,29 GB**. Três decisões explicam a
+diferença para os 1,97 GB da primeira versão:
 
 - **`mlflow-skinny` em produção.** A API só precisa do *cliente* para carregar o modelo do
   Registry — servidor, UI, Flask e gunicorn ficam no grupo dev, onde a `mlflow ui` roda.
 - **`matplotlib` só em dev.** As curvas ROC/PR são geradas pelo estágio `evaluate`, que nunca
   executa dentro do container de serving.
+- **O venv fora de `/app`.** Este foi acidental e vale registrar: um `RUN chown -R /app`
+  reescreve cada arquivo tocado em uma **nova camada**. Com o venv em `/app/.venv`, os 508 MB
+  de dependências eram duplicados na imagem. Movendo para `/opt/app/.venv`, a mesma camada
+  passou de ~508 MB para 692 kB:
+
+  ```
+  508MB   COPY /opt/app/.venv /opt/app/.venv
+  692kB   RUN useradd ... && chown -R appuser:appuser /app
+  ```
+
+### Uma nota honesta sobre reprodutibilidade entre plataformas
+
+Rodar o pipeline no container (Linux) e no host (Windows) produz o **mesmo campeão, a mesma
+matriz de confusão e as mesmas precision/recall** — mas as métricas divergem a partir da 5ª
+casa decimal (`pr_auc` 0,7390726 no host contra 0,7390320 no container). Não é falta de seed:
+numpy e scipy usam bibliotecas BLAS compiladas diferentes em cada sistema, e a ordem de
+somatório em ponto flutuante muda. Reprodutibilidade bit a bit entre plataformas exigiria
+fixar a BLAS — as **decisões** do modelo, essas sim, são idênticas.
 
 <details>
 <summary><b>Build atrás de proxy corporativo ou antivírus com inspeção TLS</b></summary>
@@ -444,10 +497,29 @@ tech_challenge_2/
 ├── dvc.yaml / dvc.lock         definicao e estado do pipeline
 ├── pyproject.toml              Poetry — prod e dev separados
 ├── poetry.lock                 versoes travadas (commitado)
-├── Dockerfile                  multi-stage, non-root, healthcheck
+├── Dockerfile                  multi-stage: alvo `pipeline` (executa) e `serving` (API)
 ├── Makefile                    atalhos de desenvolvimento
 └── .env.example                template de configuracao
 ```
+
+### Por que não existe um diretório `configs/`
+
+O enunciado sugere `configs/` na lista de pastas de exemplo (*"ex.: src/, tests/, data/,
+models/, configs/"*). Aqui a configuração está deliberadamente dividida em dois arquivos na
+raiz, cada um com um dono diferente:
+
+| Arquivo | Contém | Quem consome |
+|---|---|---|
+| `params.yaml` | seed e hiperparâmetros — **define o experimento** | o DVC, que hasheia cada chave |
+| `.env` | caminhos, URIs, portas — **muda entre máquinas** | `Settings(BaseSettings)` |
+
+Mover o `params.yaml` para `configs/` funcionaria, mas iria contra a convenção do DVC, que
+espera o arquivo na raiz do projeto — é o caminho padrão de `dvc params diff` e `dvc repro`.
+Ganharíamos uma pasta e perderíamos o comportamento padrão da ferramenta.
+
+Como a lista do enunciado é explicitamente ilustrativa ("ex.:"), a exigência real —
+*"estrutura de projeto com pastas organizadas"* — está atendida por `src/`, `tests/`, `data/`,
+`models/`, `reports/`, `docs/`, `notebooks/` e `examples/`.
 
 ---
 
@@ -457,12 +529,13 @@ tech_challenge_2/
 |---|:---:|---|
 | **Clean Code e Estrutura** | 20% | Módulos curtos e coesos em `src/`, type hints e docstrings em todas as funções públicas, `MODEL_FACTORY` desacoplando a criação de modelos, Ruff sem apontamentos |
 | **Reprodutibilidade** | 20% | `pyproject.toml` com grupos prod/dev separados, `poetry.lock` commitado, `.env.example` no repositório e `.env` ignorado, seeds fixados em `params.yaml` |
-| **Docker** | 15% | `Dockerfile` multi-stage instalando via Poetry, usuário não-root, `HEALTHCHECK`, `.dockerignore` completo |
+| **Docker** | 15% | `Dockerfile` multi-stage instalando via Poetry: o alvo `pipeline` **executa o projeto** com `dvc repro` dentro do container, o alvo `serving` sobe a API. Usuário não-root, `HEALTHCHECK`, `.dockerignore` completo |
 | **DVC + Pipeline** | 15% | `dvc.yaml` com 5 estágios encadeados, dataset versionado por hash no `dvc.lock`, remote configurado, `dvc repro` roda do zero |
 | **Modelagem Clássica** | 10% | Quatro candidatos Scikit-Learn com validação cruzada estratificada, incluindo `DummyClassifier` como piso de comparação |
 | **MLflow + Registry** | 20% | Um run por candidato com params, métricas e modelo assinado; campeão registrado e promovido com o alias `@champion` |
 
-**Entregáveis:** repositório GitHub · vídeo STAR de 5 min.
+**Entregáveis:** repositório GitHub · vídeo STAR de 5 min. A API FastAPI não é exigida pelo
+desafio — foi acrescentada para viabilizar a entrega opcional de deploy em nuvem.
 
 ---
 

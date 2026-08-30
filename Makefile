@@ -1,5 +1,5 @@
 .PHONY: help install lint format test repro dag metrics push pull mlflow api clean \
-        docker-build docker-run
+        docker-pipeline docker-build docker-run
 
 POETRY := poetry run
 
@@ -50,8 +50,12 @@ api:            ## Sobe a API local em http://localhost:8000/docs
 
 # ── Docker ───────────────────────────────────────────────────────────────────
 
-docker-build:   ## Constrói a imagem da API
-	docker build -t purchase-intent .
+docker-pipeline: ## Constrói e EXECUTA o pipeline completo em container
+	docker build -t purchase-intent-pipeline .
+	docker run --rm purchase-intent-pipeline
+
+docker-build:   ## Constrói a imagem de serving (API)
+	docker build --target serving -t purchase-intent .
 
 docker-run:     ## Sobe a API containerizada na porta 8000
 	docker run --rm -p 8000:8000 purchase-intent
