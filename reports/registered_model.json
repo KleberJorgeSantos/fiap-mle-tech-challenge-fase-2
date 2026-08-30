@@ -1,0 +1,9 @@
+{
+  "model_name": "purchase-intent-classifier",
+  "version": 1,
+  "alias": "champion",
+  "model_uri": "models:/purchase-intent-classifier@champion",
+  "run_id": "73da0ac39f9e4f5086c4bd4b5102b3e9",
+  "selection_metric": "cv_pr_auc",
+  "selection_value": "0.738001"
+}

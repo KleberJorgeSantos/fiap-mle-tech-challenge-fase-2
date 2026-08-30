@@ -22,10 +22,15 @@ train:
     - logistic_regression
     - random_forest
     - gradient_boosting
-  # Métrica usada para eleger o campeão. PR-AUC, não accuracy:
-  # a base tem 15,5% de positivos, então prever "ninguém compra"
-  # já acerta 84,5% sem nenhum valor de negócio.
-  selection_metric: pr_auc
+  # Métrica usada para eleger o campeão.
+  #
+  # PR-AUC e não accuracy: a base tem 15,5% de positivos, então prever
+  # "ninguém compra" já acerta 84,5% sem nenhum valor de negócio.
+  #
+  # E a versão *cv* (validação cruzada no treino), não a do teste: escolher
+  # o modelo olhando o teste faz dele parte da decisão e a métrica final
+  # deixa de ser imparcial. O teste é tocado uma vez só, no `evaluate`.
+  selection_metric: cv_pr_auc
   cv_folds: 5
   hyperparams:
     dummy:

@@ -88,8 +88,8 @@ stages:
       size: 5119
     - path: src/tracking/mlflow_utils.py
       hash: md5
-      md5: 710093c260b44fde241cf1b559bfbe33
-      size: 2251
+      md5: 683bb08af4daeb3973eca94159a5519d
+      size: 2543
     params:
       params.yaml:
         seed: 42
@@ -99,7 +99,7 @@ stages:
           - logistic_regression
           - random_forest
           - gradient_boosting
-          selection_metric: pr_auc
+          selection_metric: cv_pr_auc
           cv_folds: 5
           hyperparams:
             dummy:
@@ -126,8 +126,8 @@ stages:
       size: 276653
     - path: reports/best_run.json
       hash: md5
-      md5: 099f659e496e03cfaf75e5fa238fa0d5
-      size: 160
+      md5: 4df7ec2095302703338e204e5e751d1d
+      size: 163
     - path: reports/comparison.csv
       hash: md5
       md5: 2ba3616847d9eafe513cbaf5bb1049cc
@@ -172,8 +172,8 @@ stages:
     deps:
     - path: reports/best_run.json
       hash: md5
-      md5: 099f659e496e03cfaf75e5fa238fa0d5
-      size: 160
+      md5: 4df7ec2095302703338e204e5e751d1d
+      size: 163
     - path: src/pipelines/register.py
       hash: md5
       md5: c70613ff96f909ac64f97bb2d4f3b4e4
@@ -185,5 +185,5 @@ stages:
     outs:
     - path: reports/registered_model.json
       hash: md5
-      md5: 287566839520b8fbe773ae1be8b15660
-      size: 270
+      md5: 64284fcd54e2ad37b0ca93bcaf07c99b
+      size: 273
