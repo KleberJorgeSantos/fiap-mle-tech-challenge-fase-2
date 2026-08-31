@@ -1,0 +1,49 @@
+# ============================================================
+# docker-compose.yml — API de propensão de compra
+# ============================================================
+# Este arquivo é o comando de DEPLOY: sobe a API destacada, com
+# reinício automático. Para apenas testar localmente com o log na
+# tela, use `make docker-run`.
+#
+# ── Local ───────────────────────────────────────────────────
+#   make docker-build          # treina (se preciso) e constrói a imagem
+#   docker compose up -d
+#   http://localhost:8000/docs
+#
+# ── EC2 ─────────────────────────────────────────────────────
+#   HOST_PORT=80 docker compose up -d
+#   http://<ip-publico>/docs
+#
+# O `make docker-build` precisa rodar antes: é ele que garante o
+# models/model.joblib que a imagem de serving copia. Sem o modelo,
+# o build falha.
+# ============================================================
+
+services:
+
+  api:
+    build:
+      context: .
+      # Sem `target`, o build produziria o estágio `pipeline` (o padrão
+      # do Dockerfile) e o container treinaria em vez de servir.
+      target: serving
+    image: purchase-intent:latest
+    container_name: purchase-intent
+
+    # Sobrevive a reboot da instância e a falhas do processo — a
+    # diferença entre um teste local e uma API que fica de pé.
+    restart: unless-stopped
+
+    # 8000 em desenvolvimento; no EC2 use HOST_PORT=80 para responder
+    # na porta padrão de HTTP sem precisar de proxy reverso.
+    ports:
+      - "${HOST_PORT:-8000}:8000"
+
+    environment:
+      # A API tenta o Model Registry e cai para models/model.joblib se
+      # não alcançá-lo. Aponte para um servidor MLflow real quando
+      # existir um; o default local não é acessível de dentro do container.
+      MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI:-sqlite:///mlflow.db}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+
+    # O HEALTHCHECK vem do Dockerfile — o Compose o herda, não precisa repetir.

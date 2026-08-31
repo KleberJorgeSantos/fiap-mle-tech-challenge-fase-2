@@ -1,5 +1,5 @@
 .PHONY: help install lint format test repro dag metrics push pull mlflow api clean \
-        docker-pipeline docker-build docker-run
+        docker-pipeline docker-build docker-run up down logs
 
 # `poetry run` resolve o executavel correto em qualquer plataforma
 # (.venv/bin no Linux/macOS, .venv/Scripts no Windows) e funciona com o
@@ -70,8 +70,18 @@ models/model.joblib:
 docker-build: models/model.joblib  ## Constrói a imagem de serving (treina antes, se preciso)
 	docker build --target serving -t purchase-intent .
 
-docker-run: docker-build  ## Treina (se preciso), constrói e sobe a API na porta 8000
+docker-run: docker-build  ## Treina (se preciso), constrói e sobe a API (log na tela)
 	docker run --rm -p 8000:8000 purchase-intent
+
+# Deploy: destacado e com reinício automático. Use HOST_PORT=80 no EC2.
+up: docker-build  ## Sobe a API em background via Compose (deploy)
+	docker compose up -d
+
+down:           ## Para e remove o container da API
+	docker compose down
+
+logs:           ## Acompanha os logs da API em tempo real
+	docker compose logs -f api
 
 # ── Limpeza ──────────────────────────────────────────────────────────────────
 
