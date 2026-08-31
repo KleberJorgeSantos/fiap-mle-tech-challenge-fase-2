@@ -18,6 +18,11 @@ experimentos rastreados no MLflow, modelo promovido no Model Registry e API cont
 [![Ruff](https://img.shields.io/badge/Linter-Ruff-D7FF64?style=for-the-badge&logo=ruff&logoColor=black)](https://docs.astral.sh/ruff)
 [![Tests](https://img.shields.io/badge/Testes-73%20·%2088%25-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white)](tests/)
 [![GitHub](https://img.shields.io/badge/GitHub-Reposit%C3%B3rio-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/KleberJorgeSantos/fiap-mle-tech-challenge-fase-2)
+[![API](https://img.shields.io/badge/API-AWS%20EC2-FF9900?style=for-the-badge&logo=amazonwebservices&logoColor=white)](http://ec2-54-208-12-36.compute-1.amazonaws.com/docs)
+
+<br/>
+
+🚀 **[API em produção — Swagger UI](http://ec2-54-208-12-36.compute-1.amazonaws.com/docs)**
 
 </div>
 
@@ -32,6 +37,7 @@ experimentos rastreados no MLflow, modelo promovido no Model Registry e API cont
 - [Pipeline DVC](#-pipeline-dvc)
 - [MLflow e Model Registry](#-mlflow-e-model-registry)
 - [API](#-api)
+- [API em produção (AWS EC2)](#-api-em-produção-aws-ec2)
 - [Docker](#-docker)
 - [Configuração](#-configuração)
 - [Qualidade de código](#-qualidade-de-código)
@@ -305,6 +311,40 @@ curl -X POST http://localhost:8000/predict \
 
 **Códigos de erro:** `422` para payload fora do contrato (Pydantic) ou fora das faixas válidas
 (Pandera) · `503` quando nenhum modelo pôde ser carregado.
+
+---
+
+## ☁️ API em produção (AWS EC2)
+
+🚀 **http://ec2-54-208-12-36.compute-1.amazonaws.com/docs**
+
+Entrega opcional do desafio — deploy real em nuvem, não apenas local. Mesmo modelo, mesma
+predição (`purchase_probability: 0.7614445035945958`) que a versão local e a containerizada.
+
+```bash
+curl http://ec2-54-208-12-36.compute-1.amazonaws.com/health
+# {"status":"ok","model_loaded":true,"model_source":"local-joblib"}
+```
+
+### Como foi feito
+
+| Etapa | Onde | Comando |
+|---|---|---|
+| Treinar | localmente | `poetry run dvc repro` |
+| Provisionar | console AWS | EC2 `t2.micro`, Ubuntu 22.04, Security Group liberando as portas 22 e 80 |
+| Instalar Docker | no EC2, via SSH | repositório oficial do Docker (`docker-ce` + `docker-compose-plugin`) |
+| Clonar o código | no EC2 | `git clone https://github.com/KleberJorgeSantos/fiap-mle-tech-challenge-fase-2.git` |
+| Transferir o modelo | da máquina local | `scp models/model.joblib ubuntu@<ec2>:~/app/models/` |
+| Subir | no EC2 | `HOST_PORT=80 docker compose up -d` |
+
+O roteiro completo, comando a comando, está documentado à parte (fora deste repositório, por
+conter o hostname da instância).
+
+> **Por que transferir o modelo em vez de treinar no EC2:** a imagem `pipeline` (usada para
+> treinar) tem 1,29 GB; a imagem `serving` (usada para servir) tem 839 MB. Treinar no EC2
+> obrigaria a ter as duas imagens no disco de uma instância `t2.micro` — 8 GB de EBS no free
+> tier. Treinando localmente e transferindo só o artefato (**276 KB**), o EC2 nunca constrói
+> nem armazena a imagem `pipeline`.
 
 ---
 
