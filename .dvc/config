@@ -1,5 +1,8 @@
 [core]
-    remote = localremote
+    remote = s3storage
     autostage = true
 ['remote "localremote"']
     url = ../../tc2-dvc-storage
+['remote "s3storage"']
+    url = s3://purchase-intent-dvc-storage/dvc-store
+    allow_anonymous_login = true

@@ -212,23 +212,53 @@ hash que garante que todo mundo treina exatamente sobre os mesmos 12.330 registr
 arquivo da UCI mudar amanhã, o `dvc repro` acusa a diferença em vez de treinar em silêncio
 sobre outros dados.
 
-Os bytes ficam no **remote**, configurado em `.dvc/config` como um diretório local
-(`../tc2-dvc-storage`) — escolha deliberada para que o projeto rode sem credenciais.
+Os bytes ficam num **bucket S3 público para leitura** (`s3storage`, o remote padrão do
+projeto) — qualquer clone consegue `dvc pull` sem nenhuma credencial AWS:
 
 ```bash
-poetry run dvc push           # envia dados e artefatos para o remote
-rm -rf data/ models/          # apaga tudo localmente
-poetry run dvc pull           # recupera exatamente os mesmos bytes
+poetry run dvc pull           # recupera data/ e models/ do S3, sem AWS configurado
 ```
 
-> **Clonando do GitHub?** O remote local existe apenas na máquina que rodou o `dvc push`, então
-> `dvc pull` não vai encontrar nada em um clone novo — e não precisa: rode **`dvc repro`**, que
-> baixa o dataset da UCI no estágio `download` e reconstrói tudo do zero. Em um time de
-> verdade, bastaria trocar uma linha para um bucket compartilhado:
->
-> ```bash
-> dvc remote add -d storage s3://meu-bucket/purchase-intent
-> ```
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" \
+  https://purchase-intent-dvc-storage.s3.amazonaws.com/dvc-store/files/md5/15/23deb94e664f01d41a7752eb606743
+# 200 — objeto legível anonimamente
+```
+
+Escrever (`dvc push`) continua exigindo credenciais — a política do bucket libera só
+`s3:GetObject` e `s3:ListBucket` para o público, nunca escrita:
+
+```json
+{
+  "Statement": [
+    { "Effect": "Allow", "Principal": "*", "Action": "s3:GetObject",  "Resource": "arn:aws:s3:::purchase-intent-dvc-storage/*" },
+    { "Effect": "Allow", "Principal": "*", "Action": "s3:ListBucket", "Resource": "arn:aws:s3:::purchase-intent-dvc-storage" }
+  ]
+}
+```
+
+> **Por que também `ListBucket`, e não só `GetObject`?** O `dvc pull` faz uma checagem interna
+> de existência do prefixo (`dvc-store/files/md5`) antes de baixar os arquivos individuais.
+> Sem `ListBucket`, o S3 responde `403` de forma ambígua para essa checagem — descoberto
+> testando o pull anônimo de ponta a ponta, não documentado explicitamente pela AWS.
+
+#### Trabalhando localmente sem tocar o S3 público
+
+O `.dvc/config` commitado aponta o default para `s3storage`. Quem prefere um remote próprio —
+como fica o desenvolvimento neste projeto — sobrescreve **qual remote é o default**, não a URL
+de um remote existente (trocar a URL de S3 para local quebra a validação de schema, já que os
+dois tipos aceitam opções diferentes):
+
+```bash
+# .dvc/config.local — gitignorado, nunca commitado
+[core]
+    remote = localremote
+```
+
+```bash
+poetry run dvc push           # vai para o remote local, sem tocar o S3
+poetry run dvc pull -r s3storage   # força puxar do S3 mesmo com o override ativo
+```
 
 ### Comandos úteis
 
