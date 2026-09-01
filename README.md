@@ -337,6 +337,26 @@ curl -X POST http://localhost:8000/predict \
 **Códigos de erro:** `422` para payload fora do contrato (Pydantic) ou fora das faixas válidas
 (Pandera) · `503` quando nenhum modelo pôde ser carregado.
 
+<details>
+<summary><b>Testando no PowerShell (Windows)</b></summary>
+
+`curl` no PowerShell é um apelido de `Invoke-WebRequest`, que não entende `-X`, `-H` nem `-d`.
+Duas saídas:
+
+```powershell
+# nativa do PowerShell
+Invoke-RestMethod -Uri http://localhost:8000/predict -Method Post `
+  -ContentType "application/json" -InFile examples\session.json
+
+# ou o curl de verdade, chamando o binário explicitamente
+curl.exe -X POST http://localhost:8000/predict -H "Content-Type: application/json" -d "@examples/session.json"
+```
+
+Os exemplos `curl <url>` sem flags (como em `/health`) rodam sem erro no PowerShell, mas a
+saída vem como objeto do PowerShell, não como texto JSON — mais um motivo para usar
+`Invoke-RestMethod` ou `curl.exe` ao testar por lá.
+</details>
+
 ---
 
 ## ☁️ API em produção (AWS EC2)

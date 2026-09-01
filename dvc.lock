@@ -126,7 +126,7 @@ stages:
       size: 276653
     - path: reports/best_run.json
       hash: md5
-      md5: e2a24ac4eee90f08adf1e849cd4e00ed
+      md5: cf15fa31790a84ff5782e8c5d5d32cfd
       size: 163
     - path: reports/comparison.csv
       hash: md5
@@ -172,7 +172,7 @@ stages:
     deps:
     - path: reports/best_run.json
       hash: md5
-      md5: e2a24ac4eee90f08adf1e849cd4e00ed
+      md5: cf15fa31790a84ff5782e8c5d5d32cfd
       size: 163
     - path: src/pipelines/register.py
       hash: md5
@@ -185,5 +185,5 @@ stages:
     outs:
     - path: reports/registered_model.json
       hash: md5
-      md5: 035e53e87d8fcaba50d5df43fdfe1f04
+      md5: 112e6cff09d8bd2e1949a0d366102593
       size: 273
