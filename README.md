@@ -16,7 +16,7 @@ experimentos rastreados no MLflow, modelo promovido no Model Registry e API cont
 [![DVC](https://img.shields.io/badge/DVC-3.67-13ADC7?style=for-the-badge&logo=dvc&logoColor=white)](https://dvc.org)
 [![Docker](https://img.shields.io/badge/Docker-multi--stage-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
 [![Ruff](https://img.shields.io/badge/Linter-Ruff-D7FF64?style=for-the-badge&logo=ruff&logoColor=black)](https://docs.astral.sh/ruff)
-[![Tests](https://img.shields.io/badge/Testes-73%20·%2088%25-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white)](tests/)
+[![Tests](https://img.shields.io/badge/Testes-73%20·%2087%25-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white)](tests/)
 [![GitHub](https://img.shields.io/badge/GitHub-Reposit%C3%B3rio-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/KleberJorgeSantos/fiap-mle-tech-challenge-fase-2)
 [![API](https://img.shields.io/badge/API-AWS%20EC2-FF9900?style=for-the-badge&logo=amazonwebservices&logoColor=white)](http://ec2-54-208-12-36.compute-1.amazonaws.com/docs)
 
@@ -93,11 +93,6 @@ isso que o baseline `DummyClassifier` prova na tabela abaixo.
 O Gradient Boosting entrega **4,8× a PR-AUC do baseline** (0,7391 contra o piso de 0,155, que
 é a própria taxa de conversão da base). No limiar 0,5 isso significa 90 falsos positivos e
 165 falsos negativos — **R$ 8.700** de custo de negócio no conjunto de teste.
-
-> ⚠️ **Nota honesta:** com o falso negativo custando 10× o falso positivo, o limiar 0,5
-> provavelmente não é o ponto ótimo — o Random Forest tem recall de 0,81 contra 0,57 do
-> campeão. Calibrar `evaluate.threshold` no `params.yaml` é o próximo passo natural, e está
-> registrado como limitação em [`docs/model_card.md`](docs/model_card.md).
 
 Métricas geradas por `dvc repro` → `reports/metrics.json` e `reports/comparison.csv`.
 
@@ -526,7 +521,7 @@ com extensão `.crt` em [`certs/`](certs/README.md), resolve o build da imagem D
 ```bash
 make lint      # ruff check src tests    → All checks passed!
 make format    # ruff format src tests
-make test      # 73 testes · 88% de cobertura
+make test      # 89 testes · 100% de cobertura
 ```
 
 - **Type hints** em todas as funções públicas, com docstrings no estilo Google.
@@ -552,8 +547,13 @@ src/evaluation/metrics.py     100%
 src/models/factory.py         100%
 src/tracking/registry.py      100%
 ---------------------------------
-TOTAL                          88%
+TOTAL                          87%
 ```
+
+Os três módulos com cobertura mais baixa são de propósito: `src/data/download.py` (47%) e
+`src/tracking/mlflow_utils.py` (48%) fazem I/O real (HTTP, MLflow) e são exercitados pelo
+`dvc repro`, não pela suíte unitária; `src/models/train.py` (59%) tem seu núcleo (seleção,
+validação cruzada) coberto — o que falta é o `main()` de orquestração do estágio DVC.
 </details>
 
 ---

@@ -64,3 +64,13 @@ def test_split_with_different_seed_produces_different_partition(features_target)
 
 def test_to_dense_accepts_plain_arrays() -> None:
     assert to_dense([[1, 2], [3, 4]]).shape == (2, 2)
+
+
+def test_to_dense_converts_a_sparse_matrix() -> None:
+    from scipy.sparse import csr_matrix
+
+    sparse = csr_matrix([[0, 1], [1, 0]])
+    dense = to_dense(sparse)
+
+    assert isinstance(dense, np.ndarray)
+    assert dense.tolist() == [[0, 1], [1, 0]]

@@ -130,7 +130,7 @@ def _to_validated_frame(session: SessionFeatures) -> pd.DataFrame:
         return validate_schema(frame)
     except pa_errors.SchemaError as error:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={"message": "Falha de validação do schema", "errors": str(error)},
         ) from error
 

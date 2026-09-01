@@ -68,3 +68,4 @@ certs/*.pem
 # nao artefatos do projeto.
 *.pdf
 docs/video_script.md
+README_FULL.md

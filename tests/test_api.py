@@ -112,3 +112,60 @@ def test_remote_tracking_server_is_always_attempted(monkeypatch: pytest.MonkeyPa
         lambda: Settings(_env_file=None, mlflow_tracking_uri="http://mlflow.interno:5000"),
     )
     assert api._registry_is_reachable() is True
+
+
+def test_load_from_disk_reads_the_real_joblib_file(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import joblib
+
+    from src.config import Settings
+
+    model_dir = tmp_path / "models"
+    model_dir.mkdir()
+    joblib.dump({"fake": "model"}, model_dir / "model.joblib")
+
+    monkeypatch.setattr(api, "get_settings", lambda: Settings(_env_file=None, model_dir=model_dir))
+
+    assert api._load_from_disk() == {"fake": "model"}
+
+
+def test_load_from_registry_raises_when_backend_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A guarda de `_registry_is_reachable` deve barrar antes de tocar o MLflow."""
+    from src.config import Settings
+
+    monkeypatch.setattr(
+        api,
+        "get_settings",
+        lambda: Settings(_env_file=None, mlflow_tracking_uri="sqlite:///nao-existe-mesmo.db"),
+    )
+
+    with pytest.raises(FileNotFoundError):
+        api._load_from_registry()
+
+
+def test_to_validated_frame_converts_schema_error_to_http_422(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Testa a conversão isoladamente: hoje o Pydantic já barra tudo que o
+    Pandera checaria, então este caminho não é alcançável por uma requisição
+    HTTP real — mas o comportamento de conversão continua sendo nosso e
+    precisa ficar correto caso os dois schemas divirjam no futuro."""
+    import pandera.errors as pa_errors
+    from fastapi import HTTPException
+
+    from src.api.schemas import SessionFeatures
+
+    def _raise_schema_error(_frame):
+        raise pa_errors.SchemaError(schema=None, data=None, message="faixa inválida")
+
+    monkeypatch.setattr(api, "validate_schema", _raise_schema_error)
+    session = SessionFeatures(**_EXAMPLE)
+
+    with pytest.raises(HTTPException) as exc_info:
+        api._to_validated_frame(session)
+
+    assert exc_info.value.status_code == 422
+    assert "Falha de validação" in exc_info.value.detail["message"]
