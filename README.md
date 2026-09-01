@@ -16,12 +16,14 @@ experimentos rastreados no MLflow, modelo promovido no Model Registry e API cont
 [![DVC](https://img.shields.io/badge/DVC-3.67-13ADC7?style=for-the-badge&logo=dvc&logoColor=white)](https://dvc.org)
 [![Docker](https://img.shields.io/badge/Docker-multi--stage-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
 [![Ruff](https://img.shields.io/badge/Linter-Ruff-D7FF64?style=for-the-badge&logo=ruff&logoColor=black)](https://docs.astral.sh/ruff)
-[![Tests](https://img.shields.io/badge/Testes-73%20·%2087%25-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white)](tests/)
+[![Tests](https://img.shields.io/badge/Testes-89%20·%20100%25-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white)](tests/)
 [![GitHub](https://img.shields.io/badge/GitHub-Reposit%C3%B3rio-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/KleberJorgeSantos/fiap-mle-tech-challenge-fase-2)
 [![API](https://img.shields.io/badge/API-AWS%20EC2-FF9900?style=for-the-badge&logo=amazonwebservices&logoColor=white)](http://ec2-54-208-12-36.compute-1.amazonaws.com/docs)
+[![YouTube](https://img.shields.io/badge/YouTube-V%C3%ADdeo%20STAR-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/DOMK6erabaQ)
 
 <br/>
 
+🎬 **[Vídeo de Demonstração (YouTube)](https://youtu.be/DOMK6erabaQ)** &nbsp;|&nbsp;
 🚀 **[API em produção — Swagger UI](http://ec2-54-208-12-36.compute-1.amazonaws.com/docs)**
 
 </div>
@@ -558,22 +560,28 @@ make test      # 89 testes · 100% de cobertura
 <summary><b>Cobertura por módulo</b></summary>
 
 ```
-src/api/main.py                93%
-src/api/schemas.py            100%
-src/config.py                 100%
-src/data/loader.py            100%
-src/data/preprocessing.py      96%
-src/evaluation/metrics.py     100%
-src/models/factory.py         100%
-src/tracking/registry.py      100%
----------------------------------
-TOTAL                          87%
+src/api/main.py                100%
+src/api/schemas.py             100%
+src/config.py                  100%
+src/data/download.py           100%
+src/data/loader.py             100%
+src/data/preprocessing.py      100%
+src/evaluation/metrics.py      100%
+src/logging_config.py          100%
+src/models/factory.py          100%
+src/models/train.py            100%
+src/tracking/mlflow_utils.py   100%
+src/tracking/registry.py       100%
+----------------------------------
+TOTAL                          100%
 ```
 
-Os três módulos com cobertura mais baixa são de propósito: `src/data/download.py` (47%) e
-`src/tracking/mlflow_utils.py` (48%) fazem I/O real (HTTP, MLflow) e são exercitados pelo
-`dvc repro`, não pela suíte unitária; `src/models/train.py` (59%) tem seu núcleo (seleção,
-validação cruzada) coberto — o que falta é o `main()` de orquestração do estágio DVC.
+Os módulos que fazem I/O real (`download.py` fala HTTP com a UCI, `mlflow_utils.py` fala com o
+MLflow) são cobertos com o próprio módulo mockado — `requests.get` e `mlflow.*` interceptados,
+verificando que as chamadas certas acontecem com os argumentos certos, sem tocar rede nem
+precisar de um servidor de tracking no ar. `_to_validated_frame` também guarda um teste do
+branch de erro do Pandera que, hoje, o Pydantic já intercepta antes de chegar à API — mantido
+como defesa em profundidade para o caso dos dois schemas divergirem no futuro.
 </details>
 
 ---
@@ -598,7 +606,7 @@ tech_challenge_2/
 │   │   └── registry.py         registro e promocao via alias
 │   ├── pipelines/              entrypoints dos 5 estagios do DVC
 │   └── api/                    FastAPI (main.py, schemas.py)
-├── tests/                      73 testes, fixtures offline
+├── tests/                      89 testes, fixtures offline
 ├── docs/
 │   ├── ml_canvas.md            problema, features, decisoes, riscos
 │   └── model_card.md           metricas, limitacoes, consideracoes eticas
@@ -647,8 +655,9 @@ Como a lista do enunciado é explicitamente ilustrativa ("ex.:"), a exigência r
 | **Modelagem Clássica** | 10% | Quatro candidatos Scikit-Learn com validação cruzada estratificada, incluindo `DummyClassifier` como piso de comparação |
 | **MLflow + Registry** | 20% | Um run por candidato com params, métricas e modelo assinado; campeão registrado e promovido com o alias `@champion` |
 
-**Entregáveis:** repositório GitHub · vídeo STAR de 5 min. A API FastAPI não é exigida pelo
-desafio — foi acrescentada para viabilizar a entrega opcional de deploy em nuvem.
+**Entregáveis:** repositório GitHub · [vídeo STAR de 5 min](https://youtu.be/DOMK6erabaQ). A API
+FastAPI não é exigida pelo desafio — foi acrescentada para viabilizar a entrega opcional de
+deploy em nuvem.
 
 ---
 

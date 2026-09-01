@@ -64,8 +64,8 @@ certs/*.crt
 certs/*.pem
 
 # ── Material de apoio interno (nao vai para o repositorio) ─────────
-# Enunciado do desafio e roteiro do video sao insumos do grupo,
-# nao artefatos do projeto.
+# Enunciado do desafio: insumo do grupo, nao artefato do projeto.
+# O roteiro do video foi movido para fora do repositorio
+# (C:\Users\Kleber\Documents\FIAP\Roteiro do video - tech_challenge_2.md).
 *.pdf
-docs/video_script.md
 README_FULL.md
